@@ -10,18 +10,20 @@ char **lRules, **rRules;
 size_t numRules;
 
 void printGrammar() {
+    int i;
     printf("Number of Rules: %zu\n", numRules);
-    for (int i=0; i<numRules; i++) 
+    for (i=0; i<numRules; i++) 
         printf("%s -> %s\n", lRules[i], rRules[i]); 
 }
 
 void allocDataset(size_t nlines, size_t nchar) {
+    int i;
     lRules = malloc(nlines * sizeof(char*));
-    for (int i=0; i<nlines; i++)
+    for (i=0; i<nlines; i++)
         lRules[i] = malloc(MAXLSIZE * sizeof(char));
     
     rRules = malloc(nlines * sizeof(char*));
-    for (int i=0; i<nlines; i++)
+    for (i=0; i<nlines; i++)
         rRules[i] = malloc(nchar * sizeof(char));
     
 }
