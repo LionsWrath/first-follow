@@ -2,17 +2,34 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdbool.h>
+
+#include "Stack.h"
 
 #define MAXLSIZE 1
 #define NCHAR 15
 #define NRULE 40
 
+#define SETSIZE 100
+
+#define LAMBDA e
+#define FINAL $
+
+//Grammar Related Sets
 char **lRules, **rRules;
 size_t numRules;
 
+//First Related Sets
+char firstSet[SETSIZE];
+
+//Follow Related Sets
+char followSet[SETSIZE];
+
+//-------------------------------------------------------------------READ
+
 void printGrammar() {
     int i;
-    printf("Number of Rules: %zu\n", numRules);
+    printf("Número de Regras: %zu\n", numRules);
     for (i=0; i<numRules; i++) 
         printf("%s -> %s\n", lRules[i], rRules[i]); 
 }
@@ -58,6 +75,20 @@ void readGrammar(char *filename) {
 
     free(line);
     fclose(input);
+}
+
+//------------------------------------------------------------------FIRST
+
+bool isTerminal(char symbol) {
+    return (symbol >= 'a' && symbol <= 'z');
+}
+
+char getFirst(char set[]) {
+    return set[0];
+}
+
+void first() {
+
 }
 
 int main(int argc, char *argv[]) {
