@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #define MAXLSIZE 1
 #define NCHAR 15
@@ -59,12 +60,21 @@ void readGrammar(char *filename) {
     fclose(input);
 }
 
-int main() {
+int main(int argc, char *argv[]) {
     char filename[100];
+    int oc;
 
-    if (!scanf("%s", filename)) {
-        printf("Falhou na leitura do nome do arquivo!\n");
-        exit(EXIT_FAILURE);
+    while ((oc = getopt(argc, argv, "f:")) != -1) {
+        switch (oc) {
+            case 'f':
+                strcpy(filename, optarg);
+                break;
+            case '?':
+            default:
+                printf("Sem arquivo de entrada.");
+                exit(EXIT_FAILURE);
+                break;
+        }
     }
  
     allocDataset(NRULE, NCHAR);
