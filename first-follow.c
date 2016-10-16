@@ -60,7 +60,10 @@ void readGrammar(char *filename) {
 int main() {
     char filename[100];
 
-    scanf("%s", filename);
+    if (!scanf("%s", filename)) {
+        printf("Falhou na leitura do nome do arquivo!\n");
+        exit(EXIT_FAILURE);
+    }
  
     allocDataset(NRULE, NCHAR);
     readGrammar(filename);
