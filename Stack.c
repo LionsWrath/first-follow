@@ -14,7 +14,7 @@ int Top(Stack *S) {
     return S->data[S->size-1];
 }
 
-void Push(Stack *S, int d) {
+void Push(Stack *S, char d) {
     if (S->size < STACK_MAX)
         S->data[S->size++] = d;
     else

@@ -20,10 +20,12 @@ char **lRules, **rRules;
 size_t numRules;
 
 //First Related Sets
-char firstSet[SETSIZE];
+char lfirst[SETSIZE];
+char rfirst[SETSIZE];
 
 //Follow Related Sets
-char followSet[SETSIZE];
+char lfollow[SETSIZE];
+char rfollow[SETSIZE];
 
 //-------------------------------------------------------------------READ
 
@@ -53,7 +55,7 @@ void readGrammar(char *filename) {
     ssize_t read;
 
     if ((input = fopen(filename, "r")) == NULL) {
-        printf("Não foi possível abrir o arquivo da gramática!\n");
+        fprintf(stderr, "Não foi possível abrir o arquivo da gramática!\n");
         exit(EXIT_FAILURE);
     } 
     
@@ -77,7 +79,7 @@ void readGrammar(char *filename) {
     fclose(input);
 }
 
-//------------------------------------------------------------------FIRST
+//------------------------------------------------------------------FIRST-FOLLOW
 
 bool isTerminal(char symbol) {
     return (symbol >= 'a' && symbol <= 'z');
@@ -87,7 +89,13 @@ char getFirst(char set[]) {
     return set[0];
 }
 
+//FIRST
 void first() {
+
+}
+
+//FOLLOW
+void follow() {
 
 }
 
@@ -102,7 +110,7 @@ int main(int argc, char *argv[]) {
                 break;
             case '?':
             default:
-                printf("Sem arquivo de entrada.");
+                fprintf(stderr, "Sem arquivo de entrada.");
                 exit(EXIT_FAILURE);
                 break;
         }
