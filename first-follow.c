@@ -417,7 +417,7 @@ int main(int argc, char *argv[]) {
     allocFollow(SETSIZE, SETSIZE);
 
     int k;
-    for (k=0; k<500; k++) { //Gambiarra - arrumar depois
+    for (k=0; k<1000; k++) { 
         for (i=0; lRules[i] != '\0'; i++) {
             if (!isTerminal(lRules[i])) 
                 follow(lRules[i]);
