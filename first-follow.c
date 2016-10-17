@@ -3,8 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdbool.h>
-
-#include "Stack.h"
+#include <ctype.h>
 
 #define MAXLSIZE 1
 #define NCHAR 15
@@ -12,20 +11,20 @@
 
 #define SETSIZE 100
 
-#define LAMBDA e
-#define FINAL $
+#define LAMBDA 'e'
+#define FINAL '$'
+
+#define START 'S'
 
 //Grammar Related Sets
 char **lRules, **rRules;
 size_t numRules;
 
 //First Related Sets
-char lfirst[SETSIZE];
-char rfirst[SETSIZE];
+char *lfirst, **rfirst;
 
 //Follow Related Sets
-char lfollow[SETSIZE];
-char rfollow[SETSIZE];
+char *lfollow, **rfollow;
 
 //-------------------------------------------------------------------READ
 
@@ -33,7 +32,7 @@ void printGrammar() {
     int i;
     printf("Número de Regras: %zu\n", numRules);
     for (i=0; i<numRules; i++) 
-        printf("%s -> %s\n", lRules[i], rRules[i]); 
+        printf("    %s -> %s\n", lRules[i], rRules[i]); 
 }
 
 void allocDataset(size_t nlines, size_t nchar) {
@@ -46,6 +45,28 @@ void allocDataset(size_t nlines, size_t nchar) {
     for (i=0; i<nlines; i++)
         rRules[i] = malloc(nchar * sizeof(char));
     
+}
+
+void allocFirst(size_t nlines, size_t nchar) {
+    int i;
+    lfirst = malloc(nlines * sizeof(char));
+    lfirst[0] = '\0';
+    rfirst = malloc(nlines * sizeof(char*));
+    for (i=0; i<nlines; i++) {
+        rfirst[i] = malloc(nchar * sizeof(char));
+        rfirst[i][0] = '\0';
+    }   
+}
+
+void allocFollow(size_t nlines, size_t nchar) {
+    int i;
+    lfollow = malloc(nlines * sizeof(char));
+    lfollow[0] = '\0';
+    rfollow = malloc(nlines * sizeof(char*));
+    for (i=0; i<nlines; i++) {
+        rfollow[i] = malloc(nchar * sizeof(char));
+        rfollow[i][0] = '\0';
+    }   
 }
 
 void readGrammar(char *filename) {
@@ -82,26 +103,157 @@ void readGrammar(char *filename) {
 //------------------------------------------------------------------FIRST-FOLLOW
 
 bool isTerminal(char symbol) {
-    return (symbol >= 'a' && symbol <= 'z');
+    return !isupper(symbol);
+}
+
+void addToSet(char set[], char symbol) {
+    int i;
+
+    //Verify if already exists
+    for(i=0; set[i] != '\0'; i++)
+        if(set[i] == symbol) return;
+            
+    set[i] = symbol;
+    set[i+1] = '\0';
+}
+
+void appendSet(char set[], char oth[]) {
+    int i;
+    for (i=0; oth[i] != '\0'; i++) 
+        addToSet(set, oth[i]);
+}
+
+bool verifyLambda(char set[]) {
+    int i;
+    for (i=0; set[i] != '\0'; i++) {
+        if (set[i] == LAMBDA) 
+            return true;
+    }
+    return false;
 }
 
 char getFirst(char set[]) {
     return set[0];
 }
 
-//FIRST
-void first() {
+int getIdx(char set[], char symbol) {
+    int i;
+    for (i=0; set[i] != '\0'; i++) {
+        if (set[i] == symbol) return i; 
+    }
 
+    set[i] = symbol;
+    set[i+1] = '\0';
+
+    return i;
+}
+
+void printFirstSet() {
+    int i, j;
+
+    fprintf(stdout, "\nFirst Sets:\n");
+    for (i=0; lfirst[i] != '\0'; i++) {
+        if (!isTerminal(lfirst[i])) {
+            fprintf(stdout, "   %c = { ", lfirst[i]);
+            for (j=0; j<strlen(rfirst[i])-1; j++) {
+                fprintf(stdout, "%c, ", rfirst[i][j]);
+            }
+            fprintf(stdout, "%c }\n", rfirst[i][strlen(rfirst[i]-1)]);
+        }
+    }
+}
+
+void printFollowSet() {
+    int i;
+
+    fprintf(stdout, "\nFollow Sets:\n");
+    for (i=0; lfollow[i] != '\0'; i++) {
+        if (!isTerminal(lfollow[i]))
+            fprintf(stdout, "   %c = %s\n", lfollow[i], rfollow[i]); 
+    }
+}
+
+//FIRST
+void first(char symbol) {
+    int i, j;
+    bool foundLambda;
+
+    int idx = getIdx(lfirst, symbol); 
+    
+    //If X is terminal, FIRST(X) = {X}
+    if (isTerminal(symbol)) {
+        addToSet(rfirst[idx], symbol);
+        return;
+    }
+
+    //If X is non-terminal, read productions
+    for (i=0; i<numRules; i++) {
+        //X productions
+        //Transform in a one vector after
+        if (lRules[i][0] == symbol) {
+            //Lambda on production
+            if (rRules[i][0] == LAMBDA) addToSet(rfirst[idx], LAMBDA);
+            else {
+                j = 0;
+                while (rRules[i][j] != '\0') {
+                    foundLambda = false;
+                    first(rRules[i][j]);
+
+                    int sidx = getIdx(lfirst, rRules[i][j]);
+                    appendSet(rfirst[idx], rfirst[sidx]);
+                    foundLambda = verifyLambda(rfirst[sidx]);
+
+                    if (!foundLambda) break;
+                    j++;
+                }
+            }
+        } 
+    }
+}
+
+//prototype
+void follow(char);
+
+void getFirstSet(char symbol, char oth) {
+    int i;
+    int idx = getIdx(lfollow, symbol);
+
+    if (isTerminal(symbol)) addToSet(rfollow[idx], symbol);
+    for (i=0; i<numRules; i++) {
+        if (lRules[i][0] == symbol) {
+            if (rRules[i][0] == LAMBDA) 
+                follow(lRules[i][0]);
+            else if (!isTerminal(rRules[i][0]))
+                addToSet(rfollow[idx], rRules[i][0]);
+            else 
+                getFirstSet(symbol, rRules[i][0]);
+        }        
+    }
 }
 
 //FOLLOW
-void follow() {
+void follow(char symbol) {
+    int i, j;
 
+    //Add final symbol to start 
+    if (symbol == START) {
+        addToSet(rfollow[getIdx(lfollow, symbol)], FINAL);
+    }
+    
+    for (i=0; i<numRules; i++) {
+        for (j=0; j<strlen(rRules[i]); j++) {
+            if (rRules[i][j] == symbol) {
+                if (rRules[i][j+1] != '\0') getFirstSet(symbol, rRules[i][j+1]);
+                if (rRules[i][j+1] == '\0' && symbol != lRules[i][0])
+                    follow(lRules[i][0]);
+            }
+        }
+    }
 }
 
 int main(int argc, char *argv[]) {
     char filename[100];
-    int oc;
+    int oc, i;
 
     while ((oc = getopt(argc, argv, "f:")) != -1) {
         switch (oc) {
@@ -119,6 +271,21 @@ int main(int argc, char *argv[]) {
     allocDataset(NRULE, NCHAR);
     readGrammar(filename);
     printGrammar();
+    
+    allocFirst(SETSIZE, SETSIZE);
+    
+    for (i=0; lRules[i][0] != '\0'; i++) {
+        first(lRules[i][0]);
+    }
+    printFirstSet();
+
+    allocFollow(SETSIZE, SETSIZE);
+
+    for (i=0; lRules[i][0] != '\0'; i++) {
+        follow(lRules[i][0]);
+    }
+
+    printFollowSet();
 
     return 0;
 }
