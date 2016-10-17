@@ -1,5 +1,5 @@
 S-TA
 A-+TA|e
 T-FB
-B-+FB|e
+B-*FB|e
 F-(S)|i
