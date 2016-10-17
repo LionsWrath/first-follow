@@ -5,7 +5,6 @@
 #include <stdbool.h>
 #include <ctype.h>
 
-#define MAXLSIZE 1
 #define NCHAR 15
 #define NRULE 40
 
@@ -17,7 +16,7 @@
 #define START 'S'
 
 //Grammar Related Sets
-char **lRules, **rRules;
+char *lRules, **rRules;
 size_t numRules;
 
 //First Related Sets
@@ -26,21 +25,16 @@ char *lfirst, **rfirst;
 //Follow Related Sets
 char *lfollow, **rfollow;
 
-//-------------------------------------------------------------------READ
+//Table Related Sets
+char **table;
+size_t numT, numNT;
 
-void printGrammar() {
-    int i;
-    printf("Número de Regras: %zu\n", numRules);
-    for (i=0; i<numRules; i++) 
-        printf("    %s -> %s\n", lRules[i], rRules[i]); 
-}
+//-------------------------------------------------------------------MEMORY
+//Create Free functions
 
 void allocDataset(size_t nlines, size_t nchar) {
     int i;
-    lRules = malloc(nlines * sizeof(char*));
-    for (i=0; i<nlines; i++)
-        lRules[i] = malloc(MAXLSIZE * sizeof(char));
-    
+    lRules = malloc(nlines * sizeof(char));
     rRules = malloc(nlines * sizeof(char*));
     for (i=0; i<nlines; i++)
         rRules[i] = malloc(nchar * sizeof(char));
@@ -69,6 +63,23 @@ void allocFollow(size_t nlines, size_t nchar) {
     }   
 }
 
+void allocTable(size_t nNT, size_t nT) {
+    int i;
+    table = malloc(nNT * sizeof(char*));
+    for (i=0; i<nNT; i++) {
+        table[i] = malloc(nT * sizeof(char*));
+    }
+}
+
+//-------------------------------------------------------------------READ
+
+void printGrammar() {
+    int i;
+    printf("Number of Rules: %zu\n", numRules);
+    for (i=0; i<numRules; i++) 
+        printf("    %c -> %s\n", lRules[i], rRules[i]); 
+}
+
 void readGrammar(char *filename) {
     FILE *input;
     char *line = NULL, *token = NULL;
@@ -84,7 +95,7 @@ void readGrammar(char *filename) {
         char actual = line[0];
         line = &line[2];
         while ((token = strsep(&line, "|")) != NULL) {
-            lRules[numRules][0] = actual;
+            lRules[numRules] = actual;
           
             //Remove trailing newline
             size_t idx = strcspn(token, "\n");
@@ -148,6 +159,7 @@ bool verifyLambda(char set[]) {
     return false;
 }
 
+//Change name to getIndex after
 int getIdx(char set[], char symbol) {
     int i;
     for (i=0; set[i] != '\0'; i++) {
@@ -214,8 +226,7 @@ void first(char symbol) {
     //If X is non-terminal, read productions
     for (i=0; i<numRules; i++) {
         //X productions
-        //Transform in a one vector after
-        if (lRules[i][0] == symbol) {
+        if (lRules[i] == symbol) {
             //Lambda on production
             if (rRules[i][0] == LAMBDA) addToSet(rfirst[idx], LAMBDA);
             else {
@@ -256,13 +267,50 @@ void follow(char symbol) {
 
                     //Contatenate FOLLOW(A) to FOLLOW(B)
                     if (verifyLambda(rfirst[sidx]))
-                        appendSet(rfollow[idx], rfollow[getIdx(lfollow, lRules[i][0])]);
+                        appendSet(rfollow[idx], rfollow[getIdx(lfollow, lRules[i])]);
                 }
                 //A -> sB - contatenate FOLLOW(A) to FOLLOW(B)
                 if (rRules[i][j+1] == '\0') {
-                    appendSet(rfollow[idx], rfollow[getIdx(lfollow, lRules[i][0])]);
+                    appendSet(rfollow[idx], rfollow[getIdx(lfollow, lRules[i])]);
                 }
             }
+        }
+    }
+}
+
+//------------------------------------------------------------------------------TABLE
+
+void countSymbols() {
+    int i;
+
+    numT = numNT = 0;
+    for (i=0; i<strlen(lfirst); i++) {
+        if (isTerminal(lfirst[i])) numT++;
+        else numNT++;
+    }
+}
+
+int whereis(char set[], char symbol) {
+    int i;
+    
+    for (i=0; i<strlen(set); i++) {
+        if (set[i] == symbol) return i;
+    }
+}
+
+int getTableIndex(char symbol) {
+    int gidx = whereis(lfirst, symbol);
+    if (isTerminal(symbol)) return gidx; 
+    else return gidx - numT;
+}
+
+void generateTable() {
+    int i, j;
+
+    for (i=0; i<numRules; i++) {
+        int fidx = getIdx(lfirst, rRules[i][0]);
+        for (j=0; j<strlen(rfirst[fidx]); j++) {
+            table[getTableIndex(lRules[i])][getTableIndex(rfirst[fidx][j])] = rRules[i];
         }
     }
 }
@@ -284,29 +332,36 @@ int main(int argc, char *argv[]) {
         }
     }
  
+    //Load Grammar
     allocDataset(NRULE, NCHAR);
     readGrammar(filename);
     printGrammar();
-    
+
+    //Generate First Set
     allocFirst(SETSIZE, SETSIZE);
 
     addNTSymbols();
-    for (i=0; lRules[i][0] != '\0'; i++) {
-        first(lRules[i][0]);
+    for (i=0; lRules[i] != '\0'; i++) {
+        first(lRules[i]);
     }
     printFirstSet();
 
+    //Generate Follow set
     allocFollow(SETSIZE, SETSIZE);
 
     int k;
-    for (k=0; k<500; k++) {
-        for (i=0; lRules[i][0] != '\0'; i++) {
-            if (!isTerminal(lRules[i][0])) 
-                follow(lRules[i][0]);
+    for (k=0; k<500; k++) { //Gambiarra - arrumar depois
+        for (i=0; lRules[i] != '\0'; i++) {
+            if (!isTerminal(lRules[i])) 
+                follow(lRules[i]);
         }
     }
 
     printFollowSet();
 
+    //Generate Table
+    countSymbols();
+    allocTable(numNT, numT);
+    
     return 0;
 }
