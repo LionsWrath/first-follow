@@ -1,3 +1,9 @@
+/*
+Adriano Ferrari Cardoso         RA: 77274
+Andrey Souto Maior              RA: 78788
+Caio Henrique Segawa Tonetti    RA: 79064
+Lucas Franco Bernardes          RA: 80824
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
