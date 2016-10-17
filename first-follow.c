@@ -26,7 +26,7 @@ char *lfirst, **rfirst;
 char *lfollow, **rfollow;
 
 //Table Related Sets
-char **table;
+char ***table;
 size_t numT, numNT;
 
 //-------------------------------------------------------------------MEMORY
@@ -64,10 +64,13 @@ void allocFollow(size_t nlines, size_t nchar) {
 }
 
 void allocTable(size_t nNT, size_t nT) {
-    int i;
+    int i, j;
     table = malloc(nNT * sizeof(char*));
     for (i=0; i<nNT; i++) {
         table[i] = malloc(nT * sizeof(char*));
+        for (j=0; j<nT; j++) {
+            table[i][j] = NULL;
+        }
     }
 }
 
@@ -177,11 +180,13 @@ void printFirstSet() {
 
     fprintf(stdout, "\nFirst Sets:\n");
     for (i=0; lfirst[i] != '\0'; i++) {
-        fprintf(stdout, "   %c = { ", lfirst[i]);
-        for (j=0; j<strlen(rfirst[i])-1; j++) {
-            fprintf(stdout, "%c, ", rfirst[i][j]);
+        if (lfirst[i] != FINAL) {
+            fprintf(stdout, "   %c = { ", lfirst[i]);
+            for (j=0; j<strlen(rfirst[i])-1; j++) {
+                fprintf(stdout, "%c, ", rfirst[i][j]);
+            }
+            fprintf(stdout, "%c }\n", rfirst[i][strlen(rfirst[i])-1]);
         }
-        fprintf(stdout, "%c }\n", rfirst[i][strlen(rfirst[i])-1]);
     }
 }
 
@@ -208,6 +213,10 @@ void addNTSymbols() {
         for (j=0; j<strlen(rRules[i]); j++) 
             if (isTerminal(rRules[i][j]))
                 addToSet(rfirst[getIdx(lfirst, rRules[i][j])], rRules[i][j]);
+}
+
+void addFinalSymbol() {
+    addToSet(rfirst[getIdx(lfirst, FINAL)], FINAL);
 }
 
 //FIRST
@@ -280,6 +289,31 @@ void follow(char symbol) {
 
 //------------------------------------------------------------------------------TABLE
 
+void printTable() {
+    int i, j, k;
+    int lidx;
+
+    fprintf(stdout, "\nTable(%zux%zu):\n\n", numNT, numT);
+    fprintf(stdout, "  |");
+    for (i=0; i<numT; i++) 
+        if (lfirst[i] != LAMBDA) fprintf(stdout, "%-5c |", lfirst[i]);
+        else lidx = i;
+    fprintf(stdout, "\n");
+    
+    for (i=0; i<numNT; i++) {
+        fprintf(stdout, "%c |", lfirst[numT + i]);
+        for (j=0; j<numT; j++) {
+            if (lidx != j) {
+                if (table[i][j] == NULL)
+                    fprintf(stdout, "%-5s |", "ERRO");
+                else 
+                    fprintf(stdout, "%-5s |", table[i][j]);
+            }
+        }
+        fprintf(stdout, "\n");
+    }
+}
+
 void countSymbols() {
     int i;
 
@@ -310,7 +344,19 @@ void generateTable() {
     for (i=0; i<numRules; i++) {
         int fidx = getIdx(lfirst, rRules[i][0]);
         for (j=0; j<strlen(rfirst[fidx]); j++) {
-            table[getTableIndex(lRules[i])][getTableIndex(rfirst[fidx][j])] = rRules[i];
+            //For each terminal a in FIRST(alpha), include A -> alpha in Table[A,a]
+            int Tidx = getTableIndex(rfirst[fidx][j]);
+            int NTidx = getTableIndex(lRules[i]);
+            table[NTidx][Tidx] = rRules[i];
+        }
+
+        if (verifyLambda(rfirst[fidx])) {
+            int widx = getIdx(lfollow, lRules[i]);
+            for (j=0; j<strlen(rfollow[widx]); j++) {
+                int Tidx = getTableIndex(rfollow[widx][j]);
+                int NTidx = getTableIndex(lRules[i]);
+                table[NTidx][Tidx] = rRules[i];
+            }
         }
     }
 }
@@ -341,6 +387,7 @@ int main(int argc, char *argv[]) {
     allocFirst(SETSIZE, SETSIZE);
 
     addNTSymbols();
+    addFinalSymbol();
     for (i=0; lRules[i] != '\0'; i++) {
         first(lRules[i]);
     }
@@ -362,6 +409,10 @@ int main(int argc, char *argv[]) {
     //Generate Table
     countSymbols();
     allocTable(numNT, numT);
-    
+
+    generateTable();
+
+    printTable();
+
     return 0;
 }
