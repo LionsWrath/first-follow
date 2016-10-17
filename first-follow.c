@@ -162,6 +162,15 @@ bool verifyLambda(char set[]) {
     return false;
 }
 
+bool verifyFinal(char set[]) {
+    int i;
+    for (i=0; set[i] != '\0'; i++) {
+        if (set[i] == FINAL) 
+            return true;
+    }
+    return false;
+}
+
 //Change name to getIndex after
 int getIdx(char set[], char symbol) {
     int i;
@@ -291,7 +300,7 @@ void follow(char symbol) {
 
 void printTable() {
     int i, j, k;
-    int lidx;
+    int lidx; //position of FINAL
 
     fprintf(stdout, "\nTable(%zux%zu):\n\n", numNT, numT);
     fprintf(stdout, "  |");
@@ -342,6 +351,8 @@ void generateTable() {
     int i, j;
 
     for (i=0; i<numRules; i++) {
+        //Index of first(alpha) in first set
+        //fprintf(stdout, "%c -> %s\n", lRules[i], rRules[i]);
         int fidx = getIdx(lfirst, rRules[i][0]);
         for (j=0; j<strlen(rfirst[fidx]); j++) {
             //For each terminal a in FIRST(alpha), include A -> alpha in Table[A,a]
@@ -350,10 +361,19 @@ void generateTable() {
             table[NTidx][Tidx] = rRules[i];
         }
 
+        //If LAMBDA belongs to FIRST(A)
         if (verifyLambda(rfirst[fidx])) {
+            //Index of follow(A) in follow set
             int widx = getIdx(lfollow, lRules[i]);
             for (j=0; j<strlen(rfollow[widx]); j++) {
                 int Tidx = getTableIndex(rfollow[widx][j]);
+                int NTidx = getTableIndex(lRules[i]);
+                table[NTidx][Tidx] = rRules[i];
+            }
+
+            //Verify if FINAL belongs to FOLLOW(A)
+            if (verifyFinal(rfollow[widx])) {
+                int Tidx = getTableIndex(FINAL);
                 int NTidx = getTableIndex(lRules[i]);
                 table[NTidx][Tidx] = rRules[i];
             }
