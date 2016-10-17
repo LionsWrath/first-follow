@@ -117,10 +117,26 @@ void addToSet(char set[], char symbol) {
     set[i+1] = '\0';
 }
 
+bool isEmpty(char set[]) {
+    if (strlen(set) == 0) return true;
+    return false;
+}
+
 void appendSet(char set[], char oth[]) {
     int i;
+
+    if (isEmpty(oth)) return;
     for (i=0; oth[i] != '\0'; i++) 
         addToSet(set, oth[i]);
+}
+
+//Like append, but ignores lambda
+void concatenateSet(char set[], char oth[]) {
+    int i;
+    
+    if (isEmpty(oth)) return;
+    for (i=0; oth[i] != '\0'; i++)
+        if (oth[i] != LAMBDA) addToSet(set, oth[i]);
 }
 
 bool verifyLambda(char set[]) {
@@ -130,10 +146,6 @@ bool verifyLambda(char set[]) {
             return true;
     }
     return false;
-}
-
-char getFirst(char set[]) {
-    return set[0];
 }
 
 int getIdx(char set[], char symbol) {
@@ -153,13 +165,11 @@ void printFirstSet() {
 
     fprintf(stdout, "\nFirst Sets:\n");
     for (i=0; lfirst[i] != '\0'; i++) {
-        if (!isTerminal(lfirst[i])) {
-            fprintf(stdout, "   %c = { ", lfirst[i]);
-            for (j=0; j<strlen(rfirst[i])-1; j++) {
-                fprintf(stdout, "%c, ", rfirst[i][j]);
-            }
-            fprintf(stdout, "%c }\n", rfirst[i][strlen(rfirst[i])-1]);
+        fprintf(stdout, "   %c = { ", lfirst[i]);
+        for (j=0; j<strlen(rfirst[i])-1; j++) {
+            fprintf(stdout, "%c, ", rfirst[i][j]);
         }
+        fprintf(stdout, "%c }\n", rfirst[i][strlen(rfirst[i])-1]);
     }
 }
 
@@ -178,6 +188,16 @@ void printFollowSet() {
     }
 }
 
+//Add all non-terminal symbols to first
+void addNTSymbols() {
+    int i, j;
+    
+    for (i=0; i<numRules; i++) 
+        for (j=0; j<strlen(rRules[i]); j++) 
+            if (isTerminal(rRules[i][j]))
+                addToSet(rfirst[getIdx(lfirst, rRules[i][j])], rRules[i][j]);
+}
+
 //FIRST
 void first(char symbol) {
     int i, j;
@@ -187,7 +207,7 @@ void first(char symbol) {
     
     //If X is terminal, FIRST(X) = {X}
     if (isTerminal(symbol)) {
-        addToSet(rfirst[idx], symbol);
+        //addToSet(rfirst[idx], symbol);
         return;
     }
 
@@ -216,41 +236,32 @@ void first(char symbol) {
     }
 }
 
-//prototype
-void follow(char);
-
-void getFirstSet(char symbol, char oth) {
-    int i;
-    int idx = getIdx(lfollow, symbol);
-
-    if (isTerminal(symbol)) addToSet(rfollow[idx], symbol);
-    for (i=0; i<numRules; i++) {
-        if (lRules[i][0] == symbol) {
-            if (rRules[i][0] == LAMBDA) 
-                follow(lRules[i][0]);
-            else if (!isTerminal(rRules[i][0]))
-                addToSet(rfollow[idx], rRules[i][0]);
-            else 
-                getFirstSet(symbol, rRules[i][0]);
-        }        
-    }
-}
-
 //FOLLOW
 void follow(char symbol) {
-    int i, j;
+    int i, j, idx = getIdx(lfollow, symbol);
 
     //Add final symbol to start 
     if (symbol == START) {
-        addToSet(rfollow[getIdx(lfollow, symbol)], FINAL);
+        addToSet(rfollow[idx], FINAL);
     }
     
     for (i=0; i<numRules; i++) {
         for (j=0; j<strlen(rRules[i]); j++) {
             if (rRules[i][j] == symbol) {
-                if (rRules[i][j+1] != '\0') getFirstSet(symbol, rRules[i][j+1]);
-                if (rRules[i][j+1] == '\0' && symbol != lRules[i][0])
-                    follow(lRules[i][0]);
+                //A -> sBk - concatenate FIRST(k) to FOLLOW(B)
+                if (rRules[i][j+1] != '\0') {
+                    int sidx = getIdx(lfirst, rRules[i][j+1]);
+                    
+                    concatenateSet(rfollow[idx], rfirst[sidx]);
+
+                    //Contatenate FOLLOW(A) to FOLLOW(B)
+                    if (verifyLambda(rfirst[sidx]))
+                        appendSet(rfollow[idx], rfollow[getIdx(lfollow, lRules[i][0])]);
+                }
+                //A -> sB - contatenate FOLLOW(A) to FOLLOW(B)
+                if (rRules[i][j+1] == '\0') {
+                    appendSet(rfollow[idx], rfollow[getIdx(lfollow, lRules[i][0])]);
+                }
             }
         }
     }
@@ -278,7 +289,8 @@ int main(int argc, char *argv[]) {
     printGrammar();
     
     allocFirst(SETSIZE, SETSIZE);
-    
+
+    addNTSymbols();
     for (i=0; lRules[i][0] != '\0'; i++) {
         first(lRules[i][0]);
     }
@@ -286,8 +298,12 @@ int main(int argc, char *argv[]) {
 
     allocFollow(SETSIZE, SETSIZE);
 
-    for (i=0; lRules[i][0] != '\0'; i++) {
-        follow(lRules[i][0]);
+    int k;
+    for (k=0; k<500; k++) {
+        for (i=0; lRules[i][0] != '\0'; i++) {
+            if (!isTerminal(lRules[i][0])) 
+                follow(lRules[i][0]);
+        }
     }
 
     printFollowSet();
