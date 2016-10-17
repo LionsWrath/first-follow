@@ -12,6 +12,7 @@ A entrada do programa é um arquivo de texto com uma grámatica para análise, s
   * As letras **minúsculas** representam estados **Terminais**
   * O símbolo "|" (*pipe*) separa produções
       * Pode-se optar pela não utilização do "pipe", basta escrever a produção em uma linha separada
+      
  * A letra **e** represeta nosso ε, portando lembrar de **não** utilizá-la para representar um terminal
  * $ representa nosso símolo final
 
