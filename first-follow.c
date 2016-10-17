@@ -158,18 +158,23 @@ void printFirstSet() {
             for (j=0; j<strlen(rfirst[i])-1; j++) {
                 fprintf(stdout, "%c, ", rfirst[i][j]);
             }
-            fprintf(stdout, "%c }\n", rfirst[i][strlen(rfirst[i]-1)]);
+            fprintf(stdout, "%c }\n", rfirst[i][strlen(rfirst[i])-1]);
         }
     }
 }
 
 void printFollowSet() {
-    int i;
+    int i, j;
 
     fprintf(stdout, "\nFollow Sets:\n");
     for (i=0; lfollow[i] != '\0'; i++) {
-        if (!isTerminal(lfollow[i]))
-            fprintf(stdout, "   %c = %s\n", lfollow[i], rfollow[i]); 
+        if (!isTerminal(lfollow[i])) {
+            fprintf(stdout, "   %c = { ", lfollow[i]);
+            for (j=0; j<strlen(rfollow[i])-1; j++) {
+                fprintf(stdout, "%c, ", rfollow[i][j]);
+            }
+            fprintf(stdout, "%c }\n", rfollow[i][strlen(rfollow[i])-1]);
+        }
     }
 }
 
