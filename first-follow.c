@@ -83,6 +83,25 @@ void printGrammar() {
         printf("    %c -> %s\n", lRules[i], rRules[i]); 
 }
 
+char* cleanString(char str[], char ch) {
+   int i, j = 0, size;
+   char *newStr, ch1;
+
+   size = strlen(str);
+   newStr = malloc(size * sizeof(char));
+
+   for (i = 0; i < size; i++) {
+      if (str[i] != ch) {
+         ch1 = str[i];
+         newStr[j] = ch1;
+         j++;
+      }
+   }
+   newStr[j] = '\0';
+
+   return newStr;
+}
+
 void readGrammar(char *filename) {
     FILE *input;
     char *line = NULL, *token = NULL;
@@ -95,6 +114,7 @@ void readGrammar(char *filename) {
     } 
     
     while ((read = getline(&line, &len, input)) != -1) {
+        line = cleanString(line, ' ');
         char actual = line[0];
         line = &line[2];
         while ((token = strsep(&line, "|")) != NULL) {
@@ -305,7 +325,7 @@ void printTable() {
     fprintf(stdout, "\nTable(%zux%zu):\n\n", numNT, numT);
     fprintf(stdout, "  |");
     for (i=0; i<numT; i++) 
-        if (lfirst[i] != LAMBDA) fprintf(stdout, "%-5c |", lfirst[i]);
+        if (lfirst[i] != LAMBDA) fprintf(stdout, "%-10c |", lfirst[i]);
         else lidx = i;
     fprintf(stdout, "\n");
     
@@ -314,9 +334,9 @@ void printTable() {
         for (j=0; j<numT; j++) {
             if (lidx != j) {
                 if (table[i][j] == NULL)
-                    fprintf(stdout, "%-5s |", "ERRO");
+                    fprintf(stdout, "%-10s |", "ERRO");
                 else 
-                    fprintf(stdout, "%-5s |", table[i][j]);
+                    fprintf(stdout, "%c -> %-5s |", lfirst[numT + i], table[i][j]);
             }
         }
         fprintf(stdout, "\n");
