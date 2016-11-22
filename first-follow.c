@@ -1,9 +1,10 @@
-/*
-Adriano Ferrari Cardoso         RA: 77274
-Andrey Souto Maior              RA: 78788
-Caio Henrique Segawa Tonetti    RA: 79064
-Lucas Franco Bernardes          RA: 80824
-*/
+//--------------------------------------------------------------------------
+//    Adriano Ferrari Cardoso         RA: 77274
+//    Andrey Souto Maior              RA: 78788
+//    Caio Henrique Segawa Tonetti    RA: 79064
+//    Lucas Franco Bernardes          RA: 80824
+//--------------------------------------------------------------------------
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -82,11 +83,11 @@ void allocTable(size_t nNT, size_t nT) {
 
 //-------------------------------------------------------------------READ
 
-void printGrammar() {
+void printGrammar(FILE *out) {
     int i;
-    printf("Number of Rules: %zu\n", numRules);
+    fprintf(out, "Number of Rules: %zu\n", numRules);
     for (i=0; i<numRules; i++) 
-        printf("    %c -> %s\n", lRules[i], rRules[i]); 
+        fprintf(out, "    %c -> %s\n", lRules[i], rRules[i]); 
 }
 
 char* cleanString(char str[], char ch) {
@@ -210,32 +211,32 @@ int getIdx(char set[], char symbol) {
     return i;
 }
 
-void printFirstSet() {
+void printFirstSet(FILE *out) {
     int i, j;
 
-    fprintf(stdout, "\nFirst Sets:\n");
+    fprintf(out, "\nFirst Sets:\n");
     for (i=0; lfirst[i] != '\0'; i++) {
         if (lfirst[i] != FINAL) {
-            fprintf(stdout, "   %c = { ", lfirst[i]);
+            fprintf(out, "   %c = { ", lfirst[i]);
             for (j=0; j<strlen(rfirst[i])-1; j++) {
-                fprintf(stdout, "%c, ", rfirst[i][j]);
+                fprintf(out, "%c, ", rfirst[i][j]);
             }
-            fprintf(stdout, "%c }\n", rfirst[i][strlen(rfirst[i])-1]);
+            fprintf(out, "%c }\n", rfirst[i][strlen(rfirst[i])-1]);
         }
     }
 }
 
-void printFollowSet() {
+void printFollowSet(FILE *out) {
     int i, j;
 
-    fprintf(stdout, "\nFollow Sets:\n");
+    fprintf(out, "\nFollow Sets:\n");
     for (i=0; lfollow[i] != '\0'; i++) {
         if (!isTerminal(lfollow[i])) {
-            fprintf(stdout, "   %c = { ", lfollow[i]);
+            fprintf(out, "   %c = { ", lfollow[i]);
             for (j=0; j<strlen(rfollow[i])-1; j++) {
-                fprintf(stdout, "%c, ", rfollow[i][j]);
+                fprintf(out, "%c, ", rfollow[i][j]);
             }
-            fprintf(stdout, "%c }\n", rfollow[i][strlen(rfollow[i])-1]);
+            fprintf(out, "%c }\n", rfollow[i][strlen(rfollow[i])-1]);
         }
     }
 }
@@ -324,28 +325,28 @@ void follow(char symbol) {
 
 //------------------------------------------------------------------------------TABLE
 
-void printTable() {
+void printTable(FILE *out) {
     int i, j, k;
     int lidx; //position of FINAL
 
-    fprintf(stdout, "\nTable(%zux%zu):\n\n", numNT, numT);
-    fprintf(stdout, "  |");
+    fprintf(out, "\nTable(%zux%zu):\n\n", numNT, numT);
+    fprintf(out, "  |");
     for (i=0; i<numT; i++) 
-        if (lfirst[i] != LAMBDA) fprintf(stdout, "%-10c |", lfirst[i]);
+        if (lfirst[i] != LAMBDA) fprintf(out, "%-10c |", lfirst[i]);
         else lidx = i;
-    fprintf(stdout, "\n");
+    fprintf(out, "\n");
     
     for (i=0; i<numNT; i++) {
-        fprintf(stdout, "%c |", lfirst[numT + i]);
+        fprintf(out, "%c |", lfirst[numT + i]);
         for (j=0; j<numT; j++) {
             if (lidx != j) {
                 if (table[i][j] == NULL)
-                    fprintf(stdout, "%-10s |", "ERRO");
+                    fprintf(out, "%-10s |", "ERRO");
                 else 
-                    fprintf(stdout, "%c -> %-5s |", lfirst[numT + i], table[i][j]);
+                    fprintf(out, "%c -> %-5s |", lfirst[numT + i], table[i][j]);
             }
         }
-        fprintf(stdout, "\n");
+        fprintf(out, "\n");
     }
 }
 
@@ -408,13 +409,21 @@ void generateTable() {
 }
 
 int main(int argc, char *argv[]) {
-    char filename[100];
+    char filename[100], output[100];
     int oc, i;
+    FILE *out = stdout;
 
-    while ((oc = getopt(argc, argv, "f:")) != -1) {
+    while ((oc = getopt(argc, argv, "f:o:")) != -1) {
         switch (oc) {
             case 'f':
                 strcpy(filename, optarg);
+                break;
+            case 'o':
+                strcpy(output, optarg);
+                if ((out = fopen(output, "w")) == NULL) {
+                    fprintf(stderr, "Não foi possível abrir o arquivo de resultado!\n");
+                    exit(EXIT_FAILURE);
+                } 
                 break;
             case '?':
             default:
@@ -427,7 +436,7 @@ int main(int argc, char *argv[]) {
     //Load Grammar
     allocDataset(NRULE, NCHAR);
     readGrammar(filename);
-    printGrammar();
+    printGrammar(out);
 
     //Generate First Set
     allocFirst(SETSIZE, SETSIZE);
@@ -437,7 +446,7 @@ int main(int argc, char *argv[]) {
     for (i=0; lRules[i] != '\0'; i++) {
         first(lRules[i]);
     }
-    printFirstSet();
+    printFirstSet(out);
 
     //Generate Follow set
     allocFollow(SETSIZE, SETSIZE);
@@ -450,7 +459,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    printFollowSet();
+    printFollowSet(out);
 
     //Generate Table
     countSymbols();
@@ -458,7 +467,7 @@ int main(int argc, char *argv[]) {
 
     generateTable();
 
-    printTable();
+    printTable(out);
 
     return 0;
 }
