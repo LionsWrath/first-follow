@@ -21,7 +21,7 @@ Para executar o código:
 $ make
 $ ./a.out -f <input file name>
 ```
-Você pode também escrever o resultado em um arquiv:
+Você pode também escrever o resultado em um arquivo:
 ```sh
 $ make
 $ ./a.out -f <input file name> -o <result file name>
