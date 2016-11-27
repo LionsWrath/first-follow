@@ -1,0 +1,5 @@
+S-TR
+R-+TR|e
+T-FY
+Y-*FY|e
+F-(S)|d

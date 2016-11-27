@@ -19,8 +19,9 @@
 
 #define LAMBDA 'e'
 #define FINAL '$'
-
 #define START 'S'
+
+#define ERROR -1
 
 //Grammar Related Sets
 char *lRules, **rRules;
@@ -33,8 +34,11 @@ char *lfirst, **rfirst;
 char *lfollow, **rfollow;
 
 //Table Related Sets
-char ***table;
+char **table;
 size_t numT, numNT;
+
+//Checker for Ambiguous grammar
+int isAmbiguous = 0;
 
 //-------------------------------------------------------------------MEMORY
 //Create Free functions
@@ -76,7 +80,7 @@ void allocTable(size_t nNT, size_t nT) {
     for (i=0; i<nNT; i++) {
         table[i] = malloc(nT * sizeof(char*));
         for (j=0; j<nT; j++) {
-            table[i][j] = NULL;
+            table[i][j] = ERROR;
         }
     }
 }
@@ -147,15 +151,17 @@ bool isTerminal(char symbol) {
     return !isupper(symbol);
 }
 
-void addToSet(char set[], char symbol) {
+bool addToSet(char set[], char symbol) {
     int i;
 
     //Verify if already exists
     for(i=0; set[i] != '\0'; i++)
-        if(set[i] == symbol) return;
+        if(set[i] == symbol) return false;
             
     set[i] = symbol;
     set[i+1] = '\0';
+
+    return true;
 }
 
 bool isEmpty(char set[]) {
@@ -163,21 +169,26 @@ bool isEmpty(char set[]) {
     return false;
 }
 
-void appendSet(char set[], char oth[]) {
-    int i;
+bool appendSet(char set[], char oth[]) {
+    int i, modified = 0;
 
-    if (isEmpty(oth)) return;
+    if (isEmpty(oth)) return false;
     for (i=0; oth[i] != '\0'; i++) 
-        addToSet(set, oth[i]);
+        modified += addToSet(set, oth[i]);
+    
+    return modified || 0;
 }
 
 //Like append, but ignores lambda
-void concatenateSet(char set[], char oth[]) {
-    int i;
+bool concatenateSet(char set[], char oth[]) {
+    int i, modified = 0;
     
-    if (isEmpty(oth)) return;
+    if (isEmpty(oth)) return false;
     for (i=0; oth[i] != '\0'; i++)
-        if (oth[i] != LAMBDA) addToSet(set, oth[i]);
+        if (oth[i] != LAMBDA) 
+            modified += addToSet(set, oth[i]);
+    
+    return modified || 0;
 }
 
 bool verifyLambda(char set[]) {
@@ -264,7 +275,6 @@ void first(char symbol) {
     
     //If X is terminal, FIRST(X) = {X}
     if (isTerminal(symbol)) {
-        //addToSet(rfirst[idx], symbol);
         return;
     }
 
@@ -293,8 +303,9 @@ void first(char symbol) {
 }
 
 //FOLLOW
-void follow(char symbol) {
+bool follow(char symbol) {
     int i, j, idx = getIdx(lfollow, symbol);
+    int modified = 0;
 
     //Add final symbol to start 
     if (symbol == START) {
@@ -312,15 +323,17 @@ void follow(char symbol) {
 
                     //Contatenate FOLLOW(A) to FOLLOW(B)
                     if (verifyLambda(rfirst[sidx]))
-                        appendSet(rfollow[idx], rfollow[getIdx(lfollow, lRules[i])]);
+                        modified += appendSet(rfollow[idx], rfollow[getIdx(lfollow, lRules[i])]);
                 }
                 //A -> sB - contatenate FOLLOW(A) to FOLLOW(B)
                 if (rRules[i][j+1] == '\0') {
-                    appendSet(rfollow[idx], rfollow[getIdx(lfollow, lRules[i])]);
+                    modified += appendSet(rfollow[idx], rfollow[getIdx(lfollow, lRules[i])]);
                 }
             }
         }
     }
+
+    return modified || 0;
 }
 
 //------------------------------------------------------------------------------TABLE
@@ -340,14 +353,17 @@ void printTable(FILE *out) {
         fprintf(out, "%c |", lfirst[numT + i]);
         for (j=0; j<numT; j++) {
             if (lidx != j) {
-                if (table[i][j] == NULL)
+                if (table[i][j] == ERROR)
                     fprintf(out, "%-10s |", "ERRO");
                 else 
-                    fprintf(out, "%c -> %-5s |", lfirst[numT + i], table[i][j]);
+                    fprintf(out, "%c -> %-5s |", lfirst[numT + i], rRules[table[i][j]]);
             }
         }
         fprintf(out, "\n");
     }
+
+    if (isAmbiguous)
+        fprintf(out, "\nWarning: This grammar is ambiguous.\n");
 }
 
 void countSymbols() {
@@ -385,7 +401,11 @@ void generateTable() {
             //For each terminal a in FIRST(alpha), include A -> alpha in Table[A,a]
             int Tidx = getTableIndex(rfirst[fidx][j]);
             int NTidx = getTableIndex(lRules[i]);
-            table[NTidx][Tidx] = rRules[i];
+            
+            if (table[NTidx][Tidx] != ERROR && table[NTidx][Tidx] != i) 
+                isAmbiguous = 1;
+           
+            table[NTidx][Tidx] = i;
         }
 
         //If LAMBDA belongs to FIRST(A)
@@ -395,14 +415,22 @@ void generateTable() {
             for (j=0; j<strlen(rfollow[widx]); j++) {
                 int Tidx = getTableIndex(rfollow[widx][j]);
                 int NTidx = getTableIndex(lRules[i]);
-                table[NTidx][Tidx] = rRules[i];
+
+                if (table[NTidx][Tidx] != ERROR && table[NTidx][Tidx] != i) 
+                    isAmbiguous = 1;
+           
+                table[NTidx][Tidx] = i;
             }
 
             //Verify if FINAL belongs to FOLLOW(A)
             if (verifyFinal(rfollow[widx])) {
                 int Tidx = getTableIndex(FINAL);
                 int NTidx = getTableIndex(lRules[i]);
-                table[NTidx][Tidx] = rRules[i];
+
+                if (table[NTidx][Tidx] != ERROR && table[NTidx][Tidx] != i) 
+                    isAmbiguous = 1;
+
+                table[NTidx][Tidx] = i;
             }
         }
     }
@@ -451,11 +479,12 @@ int main(int argc, char *argv[]) {
     //Generate Follow set
     allocFollow(SETSIZE, SETSIZE);
 
-    int k;
-    for (k=0; k<1000; k++) { 
+    int modified = 1;
+    while (modified) {
+        modified = 0;
         for (i=0; lRules[i] != '\0'; i++) {
             if (!isTerminal(lRules[i])) 
-                follow(lRules[i]);
+                modified += follow(lRules[i]);
         }
     }
 
