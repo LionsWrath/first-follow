@@ -345,7 +345,7 @@ void printTable(FILE *out) {
     fprintf(out, "\nTable(%zux%zu):\n\n", numNT, numT);
     fprintf(out, "  |");
     for (i=0; i<numT; i++) 
-        if (lfirst[i] != LAMBDA) fprintf(out, "%-10c |", lfirst[i]);
+        if (rfirst[i][0] != LAMBDA) fprintf(out, "%-10c |", lfirst[i]);
         else lidx = i;
     fprintf(out, "\n");
     
@@ -395,7 +395,6 @@ void generateTable() {
 
     for (i=0; i<numRules; i++) {
         //Index of first(alpha) in first set
-        //fprintf(stdout, "%c -> %s\n", lRules[i], rRules[i]);
         int fidx = getIdx(lfirst, rRules[i][0]);
         for (j=0; j<strlen(rfirst[fidx]); j++) {
             //For each terminal a in FIRST(alpha), include A -> alpha in Table[A,a]
@@ -497,6 +496,6 @@ int main(int argc, char *argv[]) {
     generateTable();
 
     printTable(out);
-
+    
     return 0;
 }
